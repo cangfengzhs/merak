@@ -4,14 +4,14 @@ from merak.point import Point
 from typing import List
 
 
-class hnsw(object):
+class HNSW(object):
     def __init__(self) -> None:
         pass
 
     def insert(self, q: Point, M: int, Mmax: int, ef: int, mL: int):
         assert(False)
 
-    def knn_search(self, q: Point, k: int, ef: int):
+    def knn_search(self, q: Point, k: int, ef: int)->List[Point]:
         assert(False)
 
     def __search_layer(self, q: Point, ep: Point, ef: int, lc: int):
