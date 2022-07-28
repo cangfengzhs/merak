@@ -1,2 +1,3 @@
 transformers
 tqdm
+nebula3-python
