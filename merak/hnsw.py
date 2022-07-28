@@ -4,8 +4,6 @@ import random
 import math
 from typing import List, Dict
 
-from importlib_metadata import entry_points
-
 from graph import LayeredGraph
 from point import Point, Points
 
