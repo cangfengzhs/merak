@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import typing as T
-import math
 import heapq
 import numpy as np
-from typing import List, Dict
+from typing import List, Set
 
 
 class Point(object):
@@ -20,6 +18,11 @@ class Point(object):
         if type(self) != type(other):
             return False
         return self.id == other.id
+
+    def __gt__(self, other: 'Point') -> bool:
+        if type(self) != type(other):
+            return False
+        return self.id > other.id
 
     def __str__(self) -> str:
         return f'point-{self._id}'
@@ -40,9 +43,9 @@ class Points:
     ''' Helper class to get the nearest and furthest element in an element vector.
     '''
 
-    def __init__(self, base: Point, nearest: bool = True, points: T.List[Point] = []):
-        self._points_pair: T.List[(int, Point)] = []
-        self._points_set: T.Set[int] = set()
+    def __init__(self, base: Point, nearest: bool = True, points: List[Point] = []):
+        self._points_pair: List[(int, Point)] = []
+        self._points_set: Set[int] = set()
         self._base = base
         self._nearest = nearest
         for p in points:
@@ -59,11 +62,12 @@ class Points:
         return self._base
 
     @property
-    def values(self) -> T.List[Point]:
+    def values(self) -> List[Point]:
         return [pair[1] for pair in self._points_pair]
 
     def push(self, p: Point):
-        assert p.id not in self._points_set
+        if p.id in self._points_set:
+            return
 
         if self._nearest:
             heapq.heappush(self._points_pair, (p.distance(self._base), p))

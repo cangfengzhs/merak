@@ -1,4 +1,5 @@
 from typing import Dict, List
+
 from point import Point
 
 
@@ -21,6 +22,10 @@ class Node:
     @property
     def top_layer(self) -> int:
         return self._top_layer
+
+    @top_layer.setter
+    def top_layer(self, layer: int):
+        self._top_layer = layer
 
 
 class LayeredGraph:
@@ -50,6 +55,7 @@ class LayeredGraph:
     def entry_point(self) -> Point:
         return self._entry_point
 
+    # maybe no need this, will be set in add_point
     @entry_point.setter
     def set_entry_point(self, p: Point):
         assert p.id in self._nodes
@@ -63,6 +69,7 @@ class LayeredGraph:
         assert 0 <= top_layer <= self._max_top_layer
         if top_layer > self._curr_top_layer:
             self._curr_top_layer = top_layer
+            self._entry_point = p
 
         node = Node(top_layer, p)
         self._nodes[p.id] = node
@@ -73,8 +80,14 @@ class LayeredGraph:
         assert p1.id != p2.id
         assert p1.id in self._nodes
         assert p2.id in self._nodes
-        assert 0 <= layer <= self._nodes[p1.id].top_layer
-        assert 0 <= layer <= self._nodes[p2.id].top_layer
+        assert 0 <= layer <= self._max_top_layer
+
+        node1 = self._nodes[p1.id]
+        if layer > node1.top_layer:
+            node1.top_layer = layer
+        node2 = self._nodes[p2.id]
+        if layer > node2.top_layer:
+            node2.top_layer = layer
 
         if self._edges[layer] is None:
             self._edges[layer] = {}
@@ -113,8 +126,9 @@ class LayeredGraph:
     def get_neighbors(self, layer: int, p: Point) -> List[Point]:
         assert p.id in self._nodes
         assert 0 <= layer <= self._max_top_layer
-        assert 0 <= layer <= self._nodes[p.id].top_layer
-        assert p.id in self._edges[layer]
+
+        if self._edges[layer] is None or p.id not in self._edges[layer]:
+            return []
 
         neighbor_ids = self._edges[layer][p.id]
         return [self._nodes[next].point for next in neighbor_ids]

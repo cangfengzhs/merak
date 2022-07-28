@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+
 from point import Point, Points
 
 
