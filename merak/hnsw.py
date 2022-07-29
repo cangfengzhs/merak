@@ -98,13 +98,16 @@ class HNSW:
             curr = candidates.pop_nearest()
             # TODO(spw): is this condition right?
             if len(result) == 0 or curr.distance(q) < result.nearest().distance(q):
-                result.push(curr)
+                if curr != q:
+                    result.push(curr)
             else:
                 to_discard.push(curr)
 
         if keep:
             while len(to_discard) > 0 and len(result) < m:
-                result.push(to_discard.pop_nearest())
+                curr = to_discard.pop_nearest()
+                if curr != 1:
+                    result.push(curr)
 
         return result.values
 
