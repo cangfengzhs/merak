@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+from asyncio import wait
+from concurrent.futures import ThreadPoolExecutor
 import random
+import threading
 from typing import List, Dict
 
 from merak.graph import LayeredGraph
@@ -29,24 +32,35 @@ class HNSW:
         result = Points(q, False, ep)
         candidates = Points(q, True, ep)
 
+        pool = ThreadPoolExecutor(100)
+        tasks = []
+
         while len(candidates) > 0:
-            curr = candidates.pop_nearest()
+            while len(candidates) > 0:
+                candidate = candidates.pop()
+                t = pool.submit(self.__handleCandidate, q, ef,
+                                l, visited, result, candidate, candidates)
+                tasks.append(t)
+            wait(tasks, return_when=wait.ALL_COMPLETED)
+
+    def __handleCandidate(self, q: Point, ef: int, l: int, visited: Dict[Point, bool], result, candidate, candidates: List[Point]):
+        curr = candidate
+        furthest_res = result.furthest()
+
+        if curr.distance(q) > furthest_res.distance(q):
+            return
+
+        for next in self._graph.get_neighbors(l, curr):
+            if next in visited:
+                continue
+            visited.add(next)
+
             furthest_res = result.furthest()
-
-            if curr.distance(q) > furthest_res.distance(q):
-                break
-
-            for next in self._graph.get_neighbors(l, curr):
-                if next in visited:
-                    continue
-                visited.add(next)
-
-                furthest_res = result.furthest()
-                if next.distance(q) < furthest_res.distance(q) or len(result) < ef:
-                    candidates.push(next)
-                    result.push(next)
-                    while len(result) > ef:
-                        result.pop_furthest()
+            if next.distance(q) < furthest_res.distance(q) or len(result) < ef:
+                candidates.push(next)
+                result.push(next)
+                while len(result) > ef:
+                    result.pop_furthest()
 
         return result.values
 
@@ -151,13 +165,15 @@ class HNSW:
         # only find one entry point for next layer
         for l in range(self._graph.top_layer, new_layer, -1):
             nearest_points = self.__search_layer(q, entry_points, 1, l)
-            entry_points = [Points(q, nearest=True, points=nearest_points).nearest()]
+            entry_points = [
+                Points(q, nearest=True, points=nearest_points).nearest()]
 
         # l in [0, new_layer], from top to bottom.
         # Find a entry point set for next layer
         for l in range(min(self._graph.top_layer, new_layer), -1, -1):
             nearest_points = self.__search_layer(q, entry_points, ef, l)
-            neighbors = self.__select_neighbors_heuristic(q, nearest_points, m, l)
+            neighbors = self.__select_neighbors_heuristic(
+                q, nearest_points, m, l)
             for e in neighbors:
                 self._graph.add_edge(l, q, e)
 
