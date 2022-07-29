@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from point import Point
+from merak.point import Point
 
 
 class Node:

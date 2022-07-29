@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 import random
-import math
 from typing import List, Dict
 
-from graph import LayeredGraph
-from point import Point, Points
+from merak.graph import LayeredGraph
+from merak.point import Point, Points
 
 
 class HNSW:

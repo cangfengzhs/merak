@@ -1,8 +1,8 @@
 import numpy as np
 import unittest
 
-from point import Point
-from hnsw import HNSW
+from merak.point import Point
+from merak.hnsw import HNSW
 
 
 class TestHNSW(unittest.TestCase):

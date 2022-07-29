@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from point import Point, Points
+from merak.point import Point, Points
 
 
 class TestPointsMethods(unittest.TestCase):

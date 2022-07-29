@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 
-from point import Point
-from graph import LayeredGraph, Node
+from merak.point import Point
+from merak.graph import LayeredGraph, Node
 
 
 class TestLayeredGraph(unittest.TestCase):

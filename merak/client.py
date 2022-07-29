@@ -1,7 +1,9 @@
-from nebula3.gclient.net import ConnectionPool
-from nebula3.Config import Config
 from typing import Dict, List
 from time import sleep
+
+from nebula3.gclient.net import ConnectionPool
+from nebula3.Config import Config
+
 
 class Client:
     def __init__(self, ip, port):
@@ -75,14 +77,16 @@ class Client:
         self.session.release()
         self.pool.close()
 
+
 if __name__ == "__main__":
     client = Client("192.168.8.211", 3999)
-    client.execute('create space if not exists test(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(10))')
+    client.execute(
+        'create space if not exists test(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(10))')
     client.execute('use test')
     client.execute('create tag if not exists t1(col1 string)')
     client.execute('create edge if not exists e1()')
     sleep(10)
-    client.insertEdge("v1", 0, "v2") # src, level, dst
-    client.insertVertex("v1", "some vector") # vid, vector
+    client.insertEdge("v1", 0, "v2")  # src, level, dst
+    client.insertVertex("v1", "some vector")  # vid, vector
     client.getNeighbors("v1")
     client.close()
