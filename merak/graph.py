@@ -25,7 +25,6 @@ class Node:
     def layer(self) -> int:
         return self._layer
 
-    @property
     def layer_neighbors(self, layer: int) -> List[int]:
         assert layer in self._neighbors
         return self._neighbors[layer]
@@ -112,4 +111,4 @@ class LayeredGraph:
         assert id in self._nodes and layer in self._nodes[id]
         assert 0 <= layer <= self._max_top_layer
 
-        return self._nodes[id][layer]
+        return self._nodes[id].layer_neighbors(layer)

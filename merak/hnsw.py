@@ -177,5 +177,5 @@ class HNSW:
             #         new_neighbors = self.__select_neighbors_heuristic(
             #             e, curr_neighbors, m_max, l)
             #         self._graph.set_neighbors(l, e, new_neighbors)
-            # entry_points = nearest_points
+            entry_points = nearest_points
         self._graph.add(add_batch)
