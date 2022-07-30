@@ -107,12 +107,12 @@ class Client:
 if __name__ == "__main__":
     client = Client("192.168.8.211", 3999)
     client.execute(
-        'create space if not exists test(partition_num=10, replica_factor=1, vid_type=FIXED_STRING(10))')
+        'create space if not exists test(partition_num=10, replica_factor=1, vid_type=int)')
     client.execute('use test')
-    client.execute('create tag if not exists t1(col1 string)')
+    client.execute('create tag if not exists t1(vec_str string)')
     client.execute('create edge if not exists e1()')
     sleep(10)
-    client.insertEdge("v1", 0, "v2")  # src, level, dst
-    client.insertVertex("v1", "some vector")  # vid, vector
-    client.get_neighbors("v1")
+    client.insertEdge(1, 0, 2)  # src, level, dst
+    client.insertVertex(1, "some vector")  # vid, vector
+    client.get_neighbors(2)
     client.close()
