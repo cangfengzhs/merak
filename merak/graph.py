@@ -1,15 +1,17 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple
+import numpy as np
 
 from merak.point import Point
+from merak.client import Client
 
 
 class Node:
-    def __init__(self, top_layer: int, point: Point):
-        self._top_layer = top_layer
+    def __init__(self, point: Point, neighbors: Dict[int, List[int]]):
         self._point = point
+        self._neighbors = neighbors
 
     def __str__(self) -> str:
-        return f'top_layer:{self._top_layer}, {self._point}'
+        return f'{self._point}'
 
     @property
     def id(self) -> int:
@@ -20,12 +22,33 @@ class Node:
         return self._point
 
     @property
-    def top_layer(self) -> int:
-        return self._top_layer
+    def layer(self) -> int:
+        return self._layer
 
-    @top_layer.setter
-    def top_layer(self, layer: int):
-        self._top_layer = layer
+    @property
+    def layer_neighbors(self, layer: int) -> List[int]:
+        assert layer in self._neighbors
+        return self._neighbors[layer]
+
+
+class AddBatch:
+    def __init__(self):
+        self._points: List[Point] = []
+        self._edges: List[Tuple[int, int, int]] = []
+
+    def add_point(self, p: Point):
+        self._points.append(p)
+
+    def add_edge(self, layer: int, src: int, dst: int):
+        self._edges.append((layer, src, dst))
+
+    @property
+    def points(self) -> List[Point]:
+        return self._points
+
+    @property
+    def edges(self) -> List[Tuple(int, int, int)]:
+        return self._edges
 
 
 class LayeredGraph:
@@ -33,15 +56,14 @@ class LayeredGraph:
     should not insert duplicate nodes
     '''
 
-    def __init__(self, max_top_layer: int):
+    def __init__(self, max_top_layer: int, client: Client):
+        self._client = client
         # layer in [0, top_layer], having top_layer+1 layers totally
         self._max_top_layer = max_top_layer
         self._curr_top_layer = -1
 
-        self._nodes: Dict[int, Node] = {}
-        self._edges: List[Dict[int, List[int]]] = [None] * (self._max_top_layer+1)
-
-        self._entry_point: Point = None
+        self._nodes: Dict[int, Node] = {}  # TODO(spw): should convert to cache
+        self._entry_point: int = -1
 
     @property
     def top_layer(self) -> int:
@@ -64,71 +86,30 @@ class LayeredGraph:
         assert node.top_layer == self._curr_top_layer
         self._entry_point = p
 
-    def add_point(self, top_layer: int, p: Point):
-        assert p.id not in self._nodes
-        assert 0 <= top_layer <= self._max_top_layer
-        if top_layer > self._curr_top_layer:
-            self._curr_top_layer = top_layer
-            self._entry_point = p
+    def add_batch(self) -> AddBatch:
+        return AddBatch()
 
-        node = Node(top_layer, p)
-        self._nodes[p.id] = node
+    def add(self, batch: AddBatch):
+        b = self._client.insert_batch()
+        for p in batch.points:
+            b.insert_vertex(p.id, p.vec_str)
+        for e in batch.edges:
+            layer, src, dst = e
+            b.insert_edge(layer, src, dst)
+            if layer > self._curr_top_layer:
+                self._curr_top_layer = layer
+                self._entry_point = src
+        self._client.insert(b)
 
-    def add_edge(self, layer: int, p1: Point, p2: Point):
-        ''' Add a undirected edge, do not allow self loop
-        '''
-        assert p1.id != p2.id
-        assert p1.id in self._nodes
-        assert p2.id in self._nodes
+    def get_point(self, id: int) -> Point:
+        vec_str, neighbor_ids = self._client.get_neighbors(id)
+        vec = np.fromstring(vec_str)
+        p = Point(id, vec)
+        self._nodes[id] = Node(p, neighbor_ids)
+        return p
+
+    def get_neighbor_ids(self, layer: int, id: int) -> List[int]:
+        assert id in self._nodes and layer in self._nodes[id]
         assert 0 <= layer <= self._max_top_layer
 
-        node1 = self._nodes[p1.id]
-        if layer > node1.top_layer:
-            node1.top_layer = layer
-        node2 = self._nodes[p2.id]
-        if layer > node2.top_layer:
-            node2.top_layer = layer
-
-        if self._edges[layer] is None:
-            self._edges[layer] = {}
-        if p1.id not in self._edges[layer]:
-            self._edges[layer][p1.id] = []
-        if p2.id not in self._edges[layer]:
-            self._edges[layer][p2.id] = []
-
-        self._edges[layer][p1.id].append(p2.id)
-        self._edges[layer][p2.id].append(p1.id)
-
-    def remove_edge(self, layer: int, p1: Point, p2: Point):
-        ''' Remove a undirected edge
-        '''
-        self.remove_edge_by_id(layer, p1.id, p2.id)
-
-    def remove_edge_by_id(self, layer: int, id1: int, id2: int):
-        assert id1 != id2
-        assert id1 in self._nodes
-        assert id2 in self._nodes
-        assert 0 <= layer <= self._nodes[id1].top_layer
-        assert 0 <= layer <= self._nodes[id2].top_layer
-
-        self._edges[layer][id1].remove(id2)
-        self._edges[layer][id2].remove(id1)
-
-    def set_neighbors(self, layer: int, p: Point, new_neighbors: List[Point]):
-        id = p.id
-        neighbor_ids = self._edges[layer][id].copy()  # Warn: python array is reference
-        for next_id in neighbor_ids:
-            self.remove_edge_by_id(layer, id, next_id)
-
-        for new_next in new_neighbors:
-            self.add_edge(layer, p, new_next)
-
-    def get_neighbors(self, layer: int, p: Point) -> List[Point]:
-        assert p.id in self._nodes
-        assert 0 <= layer <= self._max_top_layer
-
-        if self._edges[layer] is None or p.id not in self._edges[layer]:
-            return []
-
-        neighbor_ids = self._edges[layer][p.id]
-        return [self._nodes[next].point for next in neighbor_ids]
+        return self._nodes[id][layer]
