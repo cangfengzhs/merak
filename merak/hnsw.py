@@ -11,7 +11,7 @@ class HNSW:
     def __init__(self, max_top_layer: int) -> None:
         self._graph = LayeredGraph(max_top_layer)
 
-    def __search_layer(self, q: Point, ep: List[Point], ef: int, l: int) -> List[Point]:
+    def __search_layer(self, q: Point, ep: List[int], ef: int, l: int) -> List[Point]:
         ''' Search closest ef points in layer l, with ep as the entry point set
 
         Args:
@@ -25,7 +25,8 @@ class HNSW:
         '''
         assert isinstance(ep, List)
 
-        visited = {e for e in ep}
+        visited = {point_id for point_id in ep}
+        ep = [self._graph.get_point(id) for id in ep]  # transform from id to point
         result = Points(q, False, ep)
         candidates = Points(q, True, ep)
 
@@ -36,15 +37,16 @@ class HNSW:
             if curr.distance(q) > furthest_res.distance(q):
                 break
 
-            for next in self._graph.get_neighbors(l, curr):
-                if next in visited:
+            for next_id in self._graph.get_neighbor_ids(l, curr.id):
+                if next_id in visited:
                     continue
-                visited.add(next)
+                visited.add(next_id)
 
                 furthest_res = result.furthest()
-                if next.distance(q) < furthest_res.distance(q) or len(result) < ef:
-                    candidates.push(next)
-                    result.push(next)
+                next_point = self._graph.get_point(next_id)
+                if next_point.distance(q) < furthest_res.distance(q) or len(result) < ef:
+                    candidates.push(next_point)
+                    result.push(next_point)
                     while len(result) > ef:
                         result.pop_furthest()
 
@@ -68,7 +70,7 @@ class HNSW:
         points = Points(q, True, candidates)
         return [points.pop_nearest() for i in range(0, m)]
 
-    def __select_neighbors_heuristic(self, q: Point, c: List[Point],
+    def __select_neighbors_heuristic(self, q: Point, c: List[int],
                                      m: int, l: int, extend: bool = True, keep: bool = True) -> List[Point]:
         ''' Select nearest neighbors heuristically
 
@@ -84,14 +86,16 @@ class HNSW:
             m points selected by the heuristic
         '''
 
+        candidate_points = [self._graph.get_point(id) for id in c]
         result = Points(q, nearest=True)
-        candidates = Points(q, nearest=True, points=c)
+        candidates = Points(q, nearest=True, points=candidate_points)
 
         if extend:
-            for curr in c:
-                for next in self._graph.get_neighbors(l, curr):
-                    if next not in candidates:
-                        candidates.push(next)
+            for p in candidate_points:
+                for next_id in self._graph.get_neighbor_ids(l, p.id):
+                    if next_id not in candidates:
+                        next_point = self._graph.get_point(next_id)
+                        candidates.push(next_point)
 
         to_discard = Points(q, nearest=True)
         while len(candidates) > 0 and len(result) < m:
@@ -142,13 +146,14 @@ class HNSW:
             ef: size of the dynamic candidate list
             ml: normalization factor for level generation
         '''
+        add_batch = self._graph.add_batch()
 
         entry_points: List[Point] = [] if self._graph.entry_point is None else [
             self._graph.entry_point]
         new_layer = 0
         while new_layer < ml and random.randint(0, 10000) % 2 == 1:
             new_layer += 1
-        self._graph.add_point(new_layer, q)
+        add_batch.add_point(p)
 
         # l in [new_layer+1, top_layer], from top to bottom.
         # only find one entry point for next layer
@@ -162,13 +167,15 @@ class HNSW:
             nearest_points = self.__search_layer(q, entry_points, ef, l)
             neighbors = self.__select_neighbors_heuristic(q, nearest_points, m, l)
             for e in neighbors:
-                self._graph.add_edge(l, q, e)
+                add_batch.add_edge(l, q, e)
 
+            # TODO(spw): remove this temp for concurrent
             # shrink connections if old element's edges greater than m_max
-            for e in neighbors:
-                curr_neighbors = self._graph.get_neighbors(l, e)
-                if len(curr_neighbors) > m_max:
-                    new_neighbors = self.__select_neighbors_heuristic(
-                        e, curr_neighbors, m_max, l)
-                    self._graph.set_neighbors(l, e, new_neighbors)
+            # for e in neighbors:
+            #     curr_neighbors = self._graph.get_neighbors(l, e)
+            #     if len(curr_neighbors) > m_max:
+            #         new_neighbors = self.__select_neighbors_heuristic(
+            #             e, curr_neighbors, m_max, l)
+            #         self._graph.set_neighbors(l, e, new_neighbors)
             entry_points = nearest_points
+        self._graph.add(add_batch)

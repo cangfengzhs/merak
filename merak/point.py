@@ -2,7 +2,7 @@
 
 import heapq
 import numpy as np
-from typing import List, Set
+from typing import List, Set, Union
 
 
 class Point(object):
@@ -35,6 +35,12 @@ class Point(object):
     def vec(self):
         return self._vec
 
+    @property
+    def vec_str(self):
+        ''' just simple encoding now
+        '''
+        return np.array2string(self._vec)
+
     def distance(self, other: 'Point') -> float:
         return np.linalg.norm(self.vec - other.vec)
 
@@ -54,8 +60,12 @@ class Points:
     def __len__(self) -> int:
         return len(self._points_pair)
 
-    def __contains__(self, p: Point) -> bool:
-        return p.id in self._points_set
+    def __contains__(self, p: Union[Point, int]) -> bool:
+        if type(p) == Point:
+            return p.id in self._points_set
+        if type(p) == int:
+            return p in self._points_set
+        return False
 
     @property
     def base(self) -> Point:
