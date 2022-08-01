@@ -1,0 +1,6 @@
+CREATE SPACE `random_small`( partition_num=8, replica_factor=1, vid_type=INT64);
+
+create tag point(vector string);
+create edge e();
+
+insert vertex point(vector) VALUES 0:("")) 
