@@ -43,7 +43,8 @@ class Client:
         '''
         # todo: replace t1 as tag, col1 as property
         # todo: use int id?
-        query = "FETCH PROP ON t1 \'{}\' YIELD properties(vertex).col1".format(vid)
+        query = "FETCH PROP ON t1 \'{}\' YIELD properties(vertex).col1".format(
+            vid)
         result = self.session.execute(query)
         if not result.is_succeeded():
             raise RuntimeError("fetch failed")
@@ -54,7 +55,8 @@ class Client:
             raise RuntimeError("fetch no result")
 
         # todo: replace e1 as edge
-        query = "GO FROM \'{}\' OVER e1 YIELD rank(edge) as rank, dst(edge) as dst".format(vid)
+        query = "GO FROM \'{}\' OVER e1 YIELD rank(edge) as rank, dst(edge) as dst".format(
+            vid)
         result = self.session.execute(query)
         if not result.is_succeeded():
             raise RuntimeError("go failed")
@@ -76,7 +78,8 @@ class Client:
         return (vec, neighbors)
 
     def insert_vertex(self, vid, vector):
-        query = "INSERT VERTEX t1(col1) VALUES \'{}\': (\'{}\')".format(vid, vector)
+        query = "INSERT VERTEX t1(col1) VALUES \'{}\': (\'{}\')".format(
+            vid, vector)
         result = self.session.execute(query)
         if not result.is_succeeded():
             raise RuntimeError("insert vertex failed")
@@ -97,7 +100,10 @@ class Client:
             raise RuntimeError(f"insert batch {batchStr} failed")
 
     def execute(self, query):
-        return self.session.execute(query)
+        session = self.pool.get_session('root', 'nebula')
+        result = session.execute(query)
+        session.release()
+        return result
 
     def close(self):
         self.session.release()
